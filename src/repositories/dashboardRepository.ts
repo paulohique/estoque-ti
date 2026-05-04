@@ -357,7 +357,7 @@ export async function getStaleItems(filters: DashboardFilters = {}, limit = 5) {
     WHERE ${itemFilter.where}
     GROUP BY i.id, i.name, i.asset_tag, c.name, i.category, i.qty_total
     ORDER BY
-      CASE WHEN last_out_at IS NULL THEN 0 ELSE 1 END ASC,
+      CASE WHEN MAX(CASE WHEN sm.movement_type = 'out' THEN sm.created_at ELSE NULL END) IS NULL THEN 0 ELSE 1 END ASC,
       days_without_out DESC,
       i.updated_at ASC
     LIMIT ?`,
