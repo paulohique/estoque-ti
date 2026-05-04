@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type View = "dashboard" | "produtos" | "estoque" | "movimentacao" | "auditoria" | "permissoes";
+type View = "dashboard" | "produtos" | "estoque" | "movimentacao" | "auditoria" | "setores" | "categorias" | "permissoes";
 type DashboardTab = "geral" | "mes" | "comparativo";
 type MovementType = "in" | "out" | "transfer";
 
 type Product = {
   id: number;
+  categoryId?: number | null;
   name: string;
   category: string;
   assetTag?: string | null;
@@ -39,9 +40,30 @@ type RecentMovement = {
   movementType: MovementType;
   quantity: number;
   requestedByName: string;
+  sectorName?: string | null;
   glpiTicketNumber?: string | null;
+  glpiCommentStatus?: string | null;
   notes?: string | null;
   createdAt: string;
+};
+
+type Sector = {
+  id: number;
+  name: string;
+  description?: string | null;
+};
+
+type CategoryOption = {
+  id: number;
+  name: string;
+  description?: string | null;
+};
+
+type SectorMovementData = {
+  sectorId: number;
+  sectorName: string;
+  movementCount: number;
+  totalQuantity: number;
 };
 
 type DashboardData = {
@@ -55,11 +77,12 @@ type DashboardData = {
   comparison: { current: number; previous: number };
   categories: CategoryData[];
   recentMovements: RecentMovement[];
+  sectorMovements: SectorMovementData[];
 };
 
 type ProductFormState = {
   name: string;
-  category: string;
+  categoryId: string;
   assetTag: string;
   sku: string;
   description: string;
@@ -71,9 +94,22 @@ type ProductFormState = {
 type MovementFormState = {
   movementType: MovementType;
   itemId: string;
+  sectorId: string;
   quantity: string;
   glpiTicketNumber: string;
   notes: string;
+};
+
+type SectorFormState = {
+  id?: number;
+  name: string;
+  description: string;
+};
+
+type CategoryFormState = {
+  id?: number;
+  name: string;
+  description: string;
 };
 
 const titles: Record<View, [string, string]> = {
@@ -82,12 +118,14 @@ const titles: Record<View, [string, string]> = {
   estoque: ["Estoque critico", "Itens em falta ou abaixo do minimo"],
   movimentacao: ["Movimentacao", "Entradas, saidas e transferencias persistidas"],
   auditoria: ["Auditoria", "Ultimas movimentacoes registradas no banco"],
+  setores: ["Setores", "CRUD de setores e secretarias"],
+  categorias: ["Categorias", "CRUD de categorias vinculadas aos produtos"],
   permissoes: ["Seguranca", "Sessao, cookie, JWT e permissoes ativas"],
 };
 
 const emptyProductForm = (): ProductFormState => ({
   name: "",
-  category: "",
+  categoryId: "",
   assetTag: "",
   sku: "",
   description: "",
@@ -99,9 +137,20 @@ const emptyProductForm = (): ProductFormState => ({
 const emptyMovementForm = (): MovementFormState => ({
   movementType: "out",
   itemId: "",
+  sectorId: "",
   quantity: "",
   glpiTicketNumber: "",
   notes: "",
+});
+
+const emptySectorForm = (): SectorFormState => ({
+  name: "",
+  description: "",
+});
+
+const emptyCategoryForm = (): CategoryFormState => ({
+  name: "",
+  description: "",
 });
 
 function formatDate(value?: string) {
@@ -186,19 +235,29 @@ export default function Home() {
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>("geral");
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [itemCategories, setItemCategories] = useState<CategoryOption[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [sectorModalOpen, setSectorModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<ProductFormState>(emptyProductForm);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productPendingDelete, setProductPendingDelete] = useState<Product | null>(null);
+  const [sectorForm, setSectorForm] = useState<SectorFormState>(emptySectorForm);
+  const [categoryForm, setCategoryForm] = useState<CategoryFormState>(emptyCategoryForm);
   const [editImage, setEditImage] = useState<File | null>(null);
   const [movementForm, setMovementForm] = useState<MovementFormState>(emptyMovementForm);
+  const [selectedSectorId, setSelectedSectorId] = useState("");
+  const [glpiWarningTicketId, setGlpiWarningTicketId] = useState<string | null>(null);
 
   const hasPermission = (code: string) => permissions.includes(code);
   const canCreateItem = hasPermission("create_item");
@@ -234,8 +293,17 @@ export default function Home() {
   };
   const monthBars = dashboard?.months ?? [];
   const comparison = dashboard?.comparison ?? { current: 0, previous: 0 };
-  const categories = dashboard?.categories ?? [];
+  const categoryStats = dashboard?.categories ?? [];
   const recentMovements = dashboard?.recentMovements ?? [];
+  const sectorMovements = dashboard?.sectorMovements ?? [];
+
+  const selectedSectorStats = useMemo(() => {
+    if (!selectedSectorId) {
+      return sectorMovements[0] ?? null;
+    }
+
+    return sectorMovements.find((item) => item.sectorId === Number(selectedSectorId)) ?? null;
+  }, [sectorMovements, selectedSectorId]);
 
   const totalDelta =
     comparison.previous === 0
@@ -259,7 +327,7 @@ export default function Home() {
     return monthBars;
   }, [comparison.current, comparison.previous, dashboardMetrics.outsThisMonth, dashboardTab, monthBars]);
 
-  const maxCategoryValue = Math.max(...categories.map((item) => item.value), 1);
+  const maxCategoryValue = Math.max(...categoryStats.map((item) => item.value), 1);
   const maxChartValue = Math.max(...chartBars.map((item) => item.value), 1);
 
   async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -279,17 +347,28 @@ export default function Home() {
   }
 
   async function loadInventoryData() {
-    const [itemsData, dashboardData] = await Promise.all([
+    const [itemsData, dashboardData, sectorsData, categoriesData] = await Promise.all([
       fetchJson<{ ok: true; items: Product[] }>("/api/items"),
       fetchJson<{ ok: true; data: DashboardData }>("/api/dashboard"),
+      fetchJson<{ ok: true; sectors: Sector[] }>("/api/sectors"),
+      fetchJson<{ ok: true; categories: CategoryOption[] }>("/api/categories"),
     ]);
 
     setProducts(itemsData.items);
     setDashboard(dashboardData.data);
+    setSectors(sectorsData.sectors);
+    setItemCategories(categoriesData.categories);
+    setSelectedSectorId((current) => {
+      if (current && sectorsData.sectors.some((sector) => sector.id === Number(current))) {
+        return current;
+      }
+      return sectorsData.sectors[0] ? String(sectorsData.sectors[0].id) : "";
+    });
   }
 
   async function bootstrap() {
     setError(null);
+    setNotice(null);
 
     try {
       const meData = await fetchJson<{ ok: true; user: User; permissions: string[] }>("/api/auth/me");
@@ -308,8 +387,29 @@ export default function Home() {
     void bootstrap();
   }, []);
 
+  useEffect(() => {
+    if (search.trim()) {
+      setView("produtos");
+    }
+  }, [search]);
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setNotice(null);
+    }, 4000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [notice]);
+
   async function refreshInventory() {
     setError(null);
+    setNotice(null);
 
     try {
       await loadInventoryData();
@@ -325,8 +425,10 @@ export default function Home() {
       return;
     }
 
-    if (!newProduct.name.trim() || !newProduct.category.trim()) {
-      setError("Preencha nome e categoria do item.");
+    setNotice(null);
+
+    if (!newProduct.name.trim() || !newProduct.categoryId) {
+      setError("Preencha nome e selecione a categoria do item.");
       return;
     }
 
@@ -334,9 +436,15 @@ export default function Home() {
     setError(null);
 
     try {
+      const selectedCategory = itemCategories.find((category) => category.id === Number(newProduct.categoryId));
+      if (!selectedCategory) {
+        throw new Error("Categoria invalida");
+      }
+
       const form = new FormData();
       form.append("name", newProduct.name.trim());
-      form.append("category", newProduct.category.trim());
+      form.append("categoryId", newProduct.categoryId);
+      form.append("category", selectedCategory.name);
       form.append("assetTag", newProduct.assetTag.trim());
       form.append("sku", newProduct.sku.trim());
       form.append("description", newProduct.description.trim());
@@ -375,12 +483,23 @@ export default function Home() {
 
     setBusy(true);
     setError(null);
+    setNotice(null);
 
     try {
+      if (!selectedProduct.categoryId) {
+        throw new Error("Selecione uma categoria valida para o produto");
+      }
+
+      const selectedCategory = itemCategories.find((category) => category.id === selectedProduct.categoryId);
+      if (!selectedCategory) {
+        throw new Error("Categoria invalida");
+      }
+
       const form = new FormData();
       form.append("id", String(selectedProduct.id));
       form.append("name", selectedProduct.name.trim());
-      form.append("category", selectedProduct.category.trim());
+      form.append("categoryId", String(selectedProduct.categoryId));
+      form.append("category", selectedCategory.name);
       form.append("assetTag", selectedProduct.assetTag?.trim() ?? "");
       form.append("sku", selectedProduct.sku?.trim() ?? "");
       form.append("description", selectedProduct.description?.trim() ?? "");
@@ -415,6 +534,8 @@ export default function Home() {
       return;
     }
 
+    setNotice(null);
+
     if (!movementForm.itemId) {
       setError("Selecione um item para movimentar.");
       return;
@@ -435,7 +556,11 @@ export default function Home() {
     setError(null);
 
     try {
-      await fetchJson<{ ok: true }>("/api/withdraw", {
+      const response = await fetchJson<{
+        ok: true;
+        glpiCommentStatus?: string;
+        glpiError?: string | null;
+      }>("/api/withdraw", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -443,6 +568,7 @@ export default function Home() {
         body: JSON.stringify({
           itemId: Number(movementForm.itemId),
           movementType: movementForm.movementType,
+          sectorId: movementForm.sectorId ? Number(movementForm.sectorId) : null,
           quantity,
           glpiTicketNumber: movementForm.glpiTicketNumber.trim(),
           notes: movementForm.notes.trim(),
@@ -450,8 +576,16 @@ export default function Home() {
         }),
       });
 
+      const ticketId = movementForm.glpiTicketNumber.trim();
       setMovementForm(emptyMovementForm());
       await refreshInventory();
+      if (response.glpiError) {
+        setGlpiWarningTicketId(ticketId);
+      } else if (ticketId) {
+        setNotice("Movimentacao salva e comentario enviado ao chamado GLPI.");
+      } else {
+        setNotice("Movimentacao salva com sucesso.");
+      }
       setView("dashboard");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Erro ao registrar movimentacao";
@@ -470,6 +604,217 @@ export default function Home() {
     setSelectedProduct({ ...item });
     setEditImage(null);
     setEditModalOpen(true);
+  }
+
+  function clearSearch() {
+    setSearch("");
+  }
+
+  function openDeleteProductModal(item: Product) {
+    setProductPendingDelete(item);
+  }
+
+  async function handleDeleteProduct() {
+    if (!productPendingDelete) {
+      return;
+    }
+
+    if (!canUpdateItem) {
+      setError("Seu usuario nao possui permissao para excluir itens.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const result = await fetchJson<{
+        ok: true;
+        relations: { movementCount: number; imageCount: number };
+      }>(`/api/items?id=${productPendingDelete.id}`, {
+        method: "DELETE",
+      });
+
+      setProductPendingDelete(null);
+      await refreshInventory();
+      setNotice(
+        `Produto excluido com sucesso do banco. Movimentacoes removidas: ${result.relations.movementCount}. Imagens relacionadas removidas: ${result.relations.imageCount}.`,
+      );
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Erro ao excluir produto";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openCreateSectorModal() {
+    setSectorForm(emptySectorForm());
+    setSectorModalOpen(true);
+  }
+
+  function openEditSectorModal(sector: Sector) {
+    setSectorForm({
+      id: sector.id,
+      name: sector.name,
+      description: sector.description ?? "",
+    });
+    setSectorModalOpen(true);
+  }
+
+  async function handleSaveSector() {
+    if (!canUpdateItem) {
+      setError("Seu usuario nao possui permissao para gerenciar setores.");
+      return;
+    }
+
+    if (!sectorForm.name.trim()) {
+      setError("Informe o nome do setor.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      if (sectorForm.id) {
+        await fetchJson<{ ok: true }>("/api/sectors", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sectorForm),
+        });
+      } else {
+        await fetchJson<{ ok: true }>("/api/sectors", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sectorForm),
+        });
+      }
+
+      setSectorModalOpen(false);
+      setSectorForm(emptySectorForm());
+      await refreshInventory();
+      setNotice("Setor salvo com sucesso.");
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Erro ao salvar setor";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteSector(id: number) {
+    if (!canUpdateItem) {
+      setError("Seu usuario nao possui permissao para excluir setores.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await fetchJson<{ ok: true }>(`/api/sectors?id=${id}`, {
+        method: "DELETE",
+      });
+      await refreshInventory();
+      setNotice("Setor removido com sucesso.");
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Erro ao excluir setor";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openCreateCategoryModal() {
+    setCategoryForm(emptyCategoryForm());
+    setCategoryModalOpen(true);
+  }
+
+  function openEditCategoryModal(category: CategoryOption) {
+    setCategoryForm({
+      id: category.id,
+      name: category.name,
+      description: category.description ?? "",
+    });
+    setCategoryModalOpen(true);
+  }
+
+  async function handleSaveCategory() {
+    if (!canUpdateItem) {
+      setError("Seu usuario nao possui permissao para gerenciar categorias.");
+      return;
+    }
+
+    if (!categoryForm.name.trim()) {
+      setError("Informe o nome da categoria.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      if (categoryForm.id) {
+        await fetchJson<{ ok: true }>("/api/categories", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(categoryForm),
+        });
+      } else {
+        await fetchJson<{ ok: true }>("/api/categories", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(categoryForm),
+        });
+      }
+
+      setCategoryModalOpen(false);
+      setCategoryForm(emptyCategoryForm());
+      await refreshInventory();
+      setNotice("Categoria salva com sucesso.");
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Erro ao salvar categoria";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteCategory(id: number) {
+    if (!canUpdateItem) {
+      setError("Seu usuario nao possui permissao para excluir categorias.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await fetchJson<{ ok: true }>(`/api/categories?id=${id}`, {
+        method: "DELETE",
+      });
+      await refreshInventory();
+      setNotice("Categoria removida com sucesso.");
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Erro ao excluir categoria";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -522,6 +867,20 @@ export default function Home() {
             </svg>
             Auditoria
           </div>
+          <div className={`nav-item ${view === "setores" ? "active" : ""}`} onClick={() => setView("setores")}>
+            <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M2 13h12" />
+              <path d="M4 13V7m4 6V3m4 10V9" />
+            </svg>
+            Setores
+          </div>
+          <div className={`nav-item ${view === "categorias" ? "active" : ""}`} onClick={() => setView("categorias")}>
+            <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="2" y="3" width="12" height="10" rx="1" />
+              <path d="M5 6h6M5 9h6" />
+            </svg>
+            Categorias
+          </div>
 
           <div className="nav-section">Acesso</div>
           <div className={`nav-item ${view === "permissoes" ? "active" : ""}`} onClick={() => setView("permissoes")}>
@@ -560,7 +919,18 @@ export default function Home() {
                 placeholder="Buscar por nome, categoria, patrimonio ou SKU"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    clearSearch();
+                    event.currentTarget.blur();
+                  }
+                }}
               />
+              {search.trim() && (
+                <button className="search-clear" onClick={clearSearch} title="Limpar busca" type="button">
+                  x
+                </button>
+              )}
             </div>
             {canCreateItem && (
               <button className="btn btn-primary" onClick={() => setProductModalOpen(true)}>
@@ -573,6 +943,14 @@ export default function Home() {
         <div className="content">
           {loading && <div className="loading">Carregando dados reais do banco...</div>}
           {error && <div className="status-banner status-error">{error}</div>}
+          {notice && (
+            <div className="status-banner status-warning">
+              <span>{notice}</span>
+              <button className="status-close" onClick={() => setNotice(null)} type="button">
+                x
+              </button>
+            </div>
+          )}
           {!loading && !error && (
             <>
               {view === "dashboard" && (
@@ -669,11 +1047,11 @@ export default function Home() {
                     <div className="card">
                       <div className="card-header">
                         <span className="card-title">Categorias mais cadastradas</span>
-                        <span className="card-action">{categories.length} categorias</span>
+                        <span className="card-action">{categoryStats.length} categorias</span>
                       </div>
                       <div className="legend">
-                        {categories.length === 0 && <div className="empty-state">Nenhum item cadastrado ainda.</div>}
-                        {categories.slice(0, 5).map((category) => (
+                        {categoryStats.length === 0 && <div className="empty-state">Nenhum item cadastrado ainda.</div>}
+                        {categoryStats.slice(0, 5).map((category) => (
                           <div className="category-row" key={category.label}>
                             <div className="category-head">
                               <span className="legend-label">{category.label}</span>
@@ -687,6 +1065,73 @@ export default function Home() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid-2">
+                    <div className="card">
+                      <div className="card-header">
+                        <span className="card-title">Equipamentos enviados por setor</span>
+                        <span className="card-action">saidas e transferencias</span>
+                      </div>
+                      <div className="form-grid compact-form">
+                        <div>
+                          <label>Setor / secretaria</label>
+                          <select value={selectedSectorId} onChange={(event) => setSelectedSectorId(event.target.value)}>
+                            {sectors.map((sector) => (
+                              <option value={sector.id} key={sector.id}>
+                                {sector.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {selectedSectorStats ? (
+                        <div className="sector-kpis">
+                          <div className="sector-kpi">
+                            <div className="metric-label">Quantidade enviada</div>
+                            <div className="metric-value">{selectedSectorStats.totalQuantity}</div>
+                          </div>
+                          <div className="sector-kpi">
+                            <div className="metric-label">Movimentacoes</div>
+                            <div className="metric-value">{selectedSectorStats.movementCount}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="empty-state">Cadastre setores para acompanhar as entregas por secretaria.</div>
+                      )}
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <span className="card-title">Resumo por setor</span>
+                        {canUpdateItem && (
+                          <span className="card-action" onClick={() => setView("setores")}>
+                            Gerenciar setores
+                          </span>
+                        )}
+                      </div>
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Setor</th>
+                              <th>Qtd enviada</th>
+                              <th>Movimentacoes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sectorMovements.map((item) => (
+                              <tr key={item.sectorId}>
+                                <td>{item.sectorName}</td>
+                                <td>{item.totalQuantity}</td>
+                                <td>{item.movementCount}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
@@ -747,6 +1192,7 @@ export default function Home() {
                               </div>
                               <div className="audit-meta">
                                 {movement.requestedByName}
+                                {movement.sectorName ? ` - ${movement.sectorName}` : ""}
                                 {movement.glpiTicketNumber ? ` - GLPI ${movement.glpiTicketNumber}` : ""}
                               </div>
                             </div>
@@ -770,12 +1216,26 @@ export default function Home() {
                           </div>
                           <div className="prod-side-actions">
                             {canUpdateItem && (
-                              <button className="icon-btn" onClick={() => openEditModal(item)} title="Editar item">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                                  <path d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
-                                  <path d="m13.5 6.5 3 3" />
-                                </svg>
-                              </button>
+                              <>
+                                <button className="icon-btn" onClick={() => openEditModal(item)} title="Editar item">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                    <path d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
+                                    <path d="m13.5 6.5 3 3" />
+                                  </svg>
+                                </button>
+                                <button
+                                  className="icon-btn danger-icon-btn"
+                                  onClick={() => openDeleteProductModal(item)}
+                                  title="Excluir item"
+                                >
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                    <path d="M4 7h16" />
+                                    <path d="M10 11v6M14 11v6" />
+                                    <path d="M6 7l1 12h10l1-12" />
+                                    <path d="M9 7V4h6v3" />
+                                  </svg>
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -893,6 +1353,23 @@ export default function Home() {
                           </select>
                         </div>
 
+                        <div>
+                          <label>Setor</label>
+                          <select
+                            value={movementForm.sectorId}
+                            onChange={(event) =>
+                              setMovementForm((current) => ({ ...current, sectorId: event.target.value }))
+                            }
+                          >
+                            <option value="">Nao informar setor</option>
+                            {sectors.map((sector) => (
+                              <option value={sector.id} key={sector.id}>
+                                {sector.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
                         <div className="form-row">
                           <div>
                             <label>Quantidade</label>
@@ -909,7 +1386,7 @@ export default function Home() {
                           <div>
                             <label>GLPI</label>
                             <input
-                              placeholder={movementForm.movementType === "out" ? "Obrigatorio para saida" : "Opcional"}
+                              placeholder={movementForm.movementType === "out" ? "Obrigatorio para saida" : "Opcional para comentar no chamado"}
                               value={movementForm.glpiTicketNumber}
                               onChange={(event) =>
                                 setMovementForm((current) => ({
@@ -951,7 +1428,12 @@ export default function Home() {
                               <div className="audit-action">
                                 {getMovementTypeLabel(movement.movementType)} - {movement.itemName} x {movement.quantity}
                               </div>
-                              <div className="audit-meta">{movement.notes || movement.requestedByName}</div>
+                              <div className="audit-meta">
+                                {movement.requestedByName}
+                                {movement.sectorName ? ` - ${movement.sectorName}` : ""}
+                                {movement.glpiTicketNumber ? ` - GLPI ${movement.glpiTicketNumber}` : ""}
+                                {movement.glpiCommentStatus ? ` - ${movement.glpiCommentStatus}` : ""}
+                              </div>
                             </div>
                             <div className="audit-time">{formatDateTime(movement.createdAt)}</div>
                           </div>
@@ -977,7 +1459,9 @@ export default function Home() {
                             <th>Produto</th>
                             <th>Qtd</th>
                             <th>Usuario</th>
+                            <th>Setor</th>
                             <th>GLPI</th>
+                            <th>Status GLPI</th>
                             <th>Observacao</th>
                           </tr>
                         </thead>
@@ -993,10 +1477,114 @@ export default function Home() {
                               <td>{movement.itemName}</td>
                               <td>{movement.quantity}</td>
                               <td>{movement.requestedByName}</td>
+                              <td>{movement.sectorName || "-"}</td>
                               <td>{movement.glpiTicketNumber || "-"}</td>
+                              <td>{movement.glpiCommentStatus || "-"}</td>
                               <td>{movement.notes || "-"}</td>
                             </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {view === "setores" && (
+                <div className="view active">
+                  <div className="card">
+                    <div className="card-header">
+                      <span className="card-title">Cadastro de setores e secretarias</span>
+                      {canUpdateItem && (
+                        <button className="btn btn-primary" onClick={openCreateSectorModal}>
+                          + Novo setor
+                        </button>
+                      )}
+                    </div>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Nome</th>
+                            <th>Descricao</th>
+                            <th>Qtd enviada</th>
+                            <th>Movimentacoes</th>
+                            <th>Acao</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sectors.map((sector) => {
+                            const stats = sectorMovements.find((item) => item.sectorId === sector.id);
+
+                            return (
+                              <tr key={sector.id}>
+                                <td>{sector.name}</td>
+                                <td>{sector.description || "-"}</td>
+                                <td>{stats?.totalQuantity ?? 0}</td>
+                                <td>{stats?.movementCount ?? 0}</td>
+                                <td>
+                                  <div className="table-actions">
+                                    <span className="card-action" onClick={() => openEditSectorModal(sector)}>
+                                      Editar
+                                    </span>
+                                    <span className="card-action danger-action" onClick={() => handleDeleteSector(sector.id)}>
+                                      Excluir
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {view === "categorias" && (
+                <div className="view active">
+                  <div className="card">
+                    <div className="card-header">
+                      <span className="card-title">Cadastro de categorias</span>
+                      {canUpdateItem && (
+                        <button className="btn btn-primary" onClick={openCreateCategoryModal}>
+                          + Nova categoria
+                        </button>
+                      )}
+                    </div>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Nome</th>
+                            <th>Descricao</th>
+                            <th>Produtos</th>
+                            <th>Acao</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itemCategories.map((category) => {
+                            const linkedCount = products.filter((item) => item.categoryId === category.id).length;
+
+                            return (
+                              <tr key={category.id}>
+                                <td>{category.name}</td>
+                                <td>{category.description || "-"}</td>
+                                <td>{linkedCount}</td>
+                                <td>
+                                  <div className="table-actions">
+                                    <span className="card-action" onClick={() => openEditCategoryModal(category)}>
+                                      Editar
+                                    </span>
+                                    <span className="card-action danger-action" onClick={() => handleDeleteCategory(category.id)}>
+                                      Excluir
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1067,12 +1655,34 @@ export default function Home() {
                 </div>
                 <div>
                   <label>Categoria</label>
-                  <input
-                    value={newProduct.category}
+                  <select
+                    value={newProduct.categoryId}
                     onChange={(event) =>
-                      setNewProduct((current) => ({ ...current, category: event.target.value }))
+                      setNewProduct((current) => ({ ...current, categoryId: event.target.value }))
                     }
-                  />
+                  >
+                    <option value="">Selecione a categoria</option>
+                    {itemCategories.map((category) => (
+                      <option value={category.id} key={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  {itemCategories.length === 0 && (
+                    <div className="inline-hint">
+                      Nenhuma categoria cadastrada.{" "}
+                      <span
+                        className="card-action"
+                        onClick={() => {
+                          setProductModalOpen(false);
+                          setView("categorias");
+                          openCreateCategoryModal();
+                        }}
+                      >
+                        Criar categoria
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label>Patrimonio (opcional)</label>
@@ -1173,14 +1783,32 @@ export default function Home() {
                 </div>
                 <div>
                   <label>Categoria</label>
-                  <input
-                    value={selectedProduct.category}
+                  <select
+                    value={selectedProduct.categoryId ?? ""}
                     onChange={(event) =>
                       setSelectedProduct((current) =>
-                        current ? { ...current, category: event.target.value } : current,
+                        current
+                          ? {
+                              ...current,
+                              categoryId: event.target.value ? Number(event.target.value) : null,
+                              category:
+                                itemCategories.find((category) => category.id === Number(event.target.value))?.name ??
+                                current.category,
+                            }
+                          : current,
                       )
                     }
-                  />
+                  >
+                    <option value="">Selecione a categoria</option>
+                    {itemCategories.map((category) => (
+                      <option value={category.id} key={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  {itemCategories.length === 0 && (
+                    <div className="inline-hint">Nenhuma categoria cadastrada no momento.</div>
+                  )}
                 </div>
                 <div>
                   <label>Patrimonio</label>
@@ -1260,6 +1888,144 @@ export default function Home() {
               </button>
               <button className="btn btn-primary" onClick={handleEditProduct} disabled={busy}>
                 {busy ? "Salvando..." : "Salvar alteracoes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {productPendingDelete && (
+        <div className="modal">
+          <div className="modal-card modal-alert">
+            <div className="modal-header">
+              <div className="modal-title">Confirmar exclusao do produto</div>
+              <button className="modal-close" onClick={() => setProductPendingDelete(null)}>
+                x
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="alert-copy">
+                O produto <b>{productPendingDelete.name}</b> sera excluido do banco.
+              </div>
+              <div className="alert-copy delete-warning-text">
+                Se este produto estiver cadastrado com movimentacoes, imagens ou qualquer outra relacao no banco,
+                esses vinculos tambem serao removidos. Essa acao nao pode ser desfeita.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setProductPendingDelete(null)}>
+                Cancelar
+              </button>
+              <button className="btn btn-danger" onClick={handleDeleteProduct} disabled={busy}>
+                {busy ? "Excluindo..." : "Sim, excluir produto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sectorModalOpen && (
+        <div className="modal">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="modal-title">{sectorForm.id ? "Editar setor" : "Novo setor"}</div>
+              <button className="modal-close" onClick={() => setSectorModalOpen(false)}>
+                x
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div>
+                  <label>Nome do setor</label>
+                  <input
+                    value={sectorForm.name}
+                    onChange={(event) => setSectorForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label>Descricao</label>
+                  <textarea
+                    rows={3}
+                    value={sectorForm.description}
+                    onChange={(event) =>
+                      setSectorForm((current) => ({ ...current, description: event.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setSectorModalOpen(false)}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveSector} disabled={busy}>
+                {busy ? "Salvando..." : "Salvar setor"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {categoryModalOpen && (
+        <div className="modal">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="modal-title">{categoryForm.id ? "Editar categoria" : "Nova categoria"}</div>
+              <button className="modal-close" onClick={() => setCategoryModalOpen(false)}>
+                x
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div>
+                  <label>Nome da categoria</label>
+                  <input
+                    value={categoryForm.name}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label>Descricao</label>
+                  <textarea
+                    rows={3}
+                    value={categoryForm.description}
+                    onChange={(event) =>
+                      setCategoryForm((current) => ({ ...current, description: event.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setCategoryModalOpen(false)}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveCategory} disabled={busy}>
+                {busy ? "Salvando..." : "Salvar categoria"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {glpiWarningTicketId && (
+        <div className="modal">
+          <div className="modal-card modal-alert">
+            <div className="modal-header">
+              <div className="modal-title">Aviso de integracao GLPI</div>
+              <button className="modal-close" onClick={() => setGlpiWarningTicketId(null)}>
+                x
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="alert-copy">
+                Foi realizada a movimentacao, porem houve um erro na postagem da API do GLPI, por
+                gentileza verificar manualmente no chamado {glpiWarningTicketId} e fazer a movimentacao por la.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setGlpiWarningTicketId(null)}>
+                Entendi
               </button>
             </div>
           </div>

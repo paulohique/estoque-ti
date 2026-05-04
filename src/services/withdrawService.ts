@@ -1,6 +1,12 @@
 import type { StockMovement } from "../models/StockMovement";
-import { createMovement, getUpdatedItemFromMovement } from "../repositories/stockMovementRepository";
-import { postWithdrawalComment, verifyTicket } from "./glpiService";
+import { getItemById } from "../repositories/itemRepository";
+import {
+  createMovement,
+  getUpdatedItemFromMovement,
+  updateMovementGlpiStatus,
+} from "../repositories/stockMovementRepository";
+import { postTicketFollowup, verifyTicket } from "./glpiService";
+import { findSectorById } from "./sectorService";
 
 export async function withdrawItem(input: {
   itemId: number;
@@ -31,6 +37,13 @@ export async function withdrawItem(input: {
     }
   }
 
+  const item = await getItemById(input.itemId);
+  if (!item) {
+    throw new Error("Item not found");
+  }
+
+  const sector = input.sectorId ? await findSectorById(input.sectorId) : null;
+
   const movement: StockMovement = {
     id: 0,
     itemId: input.itemId,
@@ -44,11 +57,50 @@ export async function withdrawItem(input: {
   };
 
   const saved = await createMovement(movement);
-  if (input.movementType === "out" && input.glpiTicketNumber) {
-    await postWithdrawalComment(input.glpiTicketNumber, "Equipamento retirado no sistema.");
+
+  let glpiCommentStatus = "not_requested";
+  let glpiError: string | null = null;
+
+  if (input.glpiTicketNumber) {
+    const sectorLabel = sector?.name ?? "setor nao informado";
+    const actionLabel =
+      input.movementType === "out"
+        ? "saida"
+        : input.movementType === "in"
+          ? "entrada"
+          : "transferencia";
+
+    const messageLines = [
+      "Movimentacao registrada automaticamente pelo Estoque TI.",
+      `O produto ${item.name} teve ${actionLabel} para o setor ${sectorLabel}.`,
+      `Quantidade movimentada: ${input.quantity}.`,
+    ];
+
+    if (item.assetTag) {
+      messageLines.push(`Patrimonio: ${item.assetTag}.`);
+    }
+
+    if (input.notes) {
+      messageLines.push(`Observacao: ${input.notes}.`);
+    }
+
+    try {
+      await postTicketFollowup({
+        ticketNumber: input.glpiTicketNumber,
+        message: messageLines.join("\n"),
+      });
+      glpiCommentStatus = "success";
+      await updateMovementGlpiStatus(saved.id, glpiCommentStatus);
+    } catch (error) {
+      glpiCommentStatus = "error";
+      glpiError = error instanceof Error ? error.message : "Falha ao comentar no GLPI";
+      await updateMovementGlpiStatus(saved.id, glpiCommentStatus);
+    }
+  } else {
+    await updateMovementGlpiStatus(saved.id, glpiCommentStatus);
   }
 
-  const item = await getUpdatedItemFromMovement(saved);
+  const updatedItem = await getUpdatedItemFromMovement(saved);
 
-  return { movement: saved, item };
+  return { movement: saved, item: updatedItem, glpiCommentStatus, glpiError };
 }

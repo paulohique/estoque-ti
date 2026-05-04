@@ -1,5 +1,5 @@
 import type { Item } from "../models/Item";
-import { addItem, getItems, updateItem } from "../services/itemService";
+import { addItem, getItems, removeItem, updateItem } from "../services/itemService";
 
 export async function listItemsController() {
   const items = await getItems();
@@ -14,4 +14,9 @@ export async function createItemController(item: Item) {
 export async function updateItemController(item: Item) {
   const updated = await updateItem(item);
   return { ok: true, item: updated };
+}
+
+export async function deleteItemController(input: { id: number }) {
+  const deleted = await removeItem(input.id);
+  return { ok: true, ...deleted };
 }

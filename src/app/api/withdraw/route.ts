@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       quantity: Number(body.quantity),
       requestedBy: session.userId,
       movementType: body.movementType ?? "out",
-      sectorId: body.sectorId ?? null,
+      sectorId: body.sectorId ? Number(body.sectorId) : null,
       glpiTicketNumber: body.glpiTicketNumber ?? null,
       notes: body.notes ?? null,
       confirmed: body.confirmed === true,

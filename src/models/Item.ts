@@ -1,5 +1,6 @@
 export interface Item {
   id?: number;
+  categoryId?: number | null;
   name: string;
   category: string;
   assetTag?: string | null;

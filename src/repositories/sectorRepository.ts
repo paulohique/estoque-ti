@@ -1,11 +1,52 @@
 import type { Sector } from "../models/Sector";
+import type { ResultSetHeader } from "mysql2";
+
+import { query } from "../lib/mysql";
 
 export async function listSectors(): Promise<Sector[]> {
-  // Implementar com MySQL.
-  return [];
+  return query<Sector[]>("SELECT id, name, description FROM sectors ORDER BY name ASC");
 }
 
-export async function getSectorById(_id: number): Promise<Sector | null> {
-  // Implementar com MySQL.
-  return null;
+export async function getSectorById(id: number): Promise<Sector | null> {
+  const rows = await query<Sector[]>(
+    "SELECT id, name, description FROM sectors WHERE id = ? LIMIT 1",
+    [id],
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function createSector(input: Omit<Sector, "id">): Promise<Sector> {
+  const result = await query<ResultSetHeader>(
+    "INSERT INTO sectors (name, description) VALUES (?, ?)",
+    [input.name, input.description ?? null],
+  );
+
+  const sector = await getSectorById(result.insertId);
+  if (!sector) {
+    throw new Error("Failed to create sector");
+  }
+
+  return sector;
+}
+
+export async function updateSector(input: Sector): Promise<Sector> {
+  await query(
+    "UPDATE sectors SET name = ?, description = ? WHERE id = ?",
+    [input.name, input.description ?? null, input.id],
+  );
+
+  const sector = await getSectorById(input.id);
+  if (!sector) {
+    throw new Error("Sector not found");
+  }
+
+  return sector;
+}
+
+export async function deleteSector(id: number) {
+  await query(
+    "DELETE FROM sectors WHERE id = ?",
+    [id],
+  );
 }

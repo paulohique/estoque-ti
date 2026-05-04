@@ -17,6 +17,13 @@ type CategoryRow = {
   value: number;
 };
 
+type SectorMovementRow = {
+  sector_id: number;
+  sector_name: string;
+  movement_count: number;
+  total_quantity: number;
+};
+
 const monthFormatter = new Intl.DateTimeFormat("pt-BR", { month: "short" });
 
 function formatMonthLabel(year: number, month: number) {
@@ -107,10 +114,11 @@ export async function getMonthComparison() {
 export async function getCategoryDistribution() {
   const rows = await query<CategoryRow[]>(
     `SELECT
-      NULLIF(TRIM(category), '') AS category,
+      NULLIF(TRIM(COALESCE(c.name, i.category)), '') AS category,
       COUNT(*) AS value
-    FROM items
-    GROUP BY NULLIF(TRIM(category), '')
+    FROM items i
+    LEFT JOIN categories c ON c.id = i.category_id
+    GROUP BY NULLIF(TRIM(COALESCE(c.name, i.category)), '')
     ORDER BY value DESC, category ASC`,
   );
 
@@ -122,4 +130,27 @@ export async function getCategoryDistribution() {
 
 export async function getRecentDashboardMovements(limit = 5) {
   return getRecentMovements(limit);
+}
+
+export async function getSectorMovementStats() {
+  const rows = await query<SectorMovementRow[]>(
+    `SELECT
+      s.id AS sector_id,
+      s.name AS sector_name,
+      COUNT(sm.id) AS movement_count,
+      COALESCE(SUM(sm.quantity), 0) AS total_quantity
+    FROM sectors s
+    LEFT JOIN stock_movements sm
+      ON sm.sector_id = s.id
+     AND sm.movement_type IN ('out', 'transfer')
+    GROUP BY s.id, s.name
+    ORDER BY total_quantity DESC, s.name ASC`,
+  );
+
+  return rows.map((row) => ({
+    sectorId: row.sector_id,
+    sectorName: row.sector_name,
+    movementCount: Number(row.movement_count ?? 0),
+    totalQuantity: Number(row.total_quantity ?? 0),
+  }));
 }

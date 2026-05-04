@@ -17,7 +17,9 @@ type RecentMovementRow = {
   movement_type: "in" | "out" | "transfer";
   quantity: number;
   requested_by_name: string;
+  sector_name: string | null;
   glpi_ticket_number: string | null;
+  glpi_comment_status: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -29,7 +31,9 @@ export type RecentMovement = {
   movementType: "in" | "out" | "transfer";
   quantity: number;
   requestedByName: string;
+  sectorName: string | null;
   glpiTicketNumber: string | null;
+  glpiCommentStatus: string | null;
   notes: string | null;
   createdAt: string;
 };
@@ -102,12 +106,15 @@ export async function getRecentMovements(limit = 8): Promise<RecentMovement[]> {
       sm.movement_type,
       sm.quantity,
       u.display_name AS requested_by_name,
+      s.name AS sector_name,
       sm.glpi_ticket_number,
+      sm.glpi_comment_status,
       sm.notes,
       sm.created_at
     FROM stock_movements sm
     INNER JOIN items i ON i.id = sm.item_id
     INNER JOIN users u ON u.id = sm.requested_by
+    LEFT JOIN sectors s ON s.id = sm.sector_id
     ORDER BY sm.created_at DESC, sm.id DESC
     LIMIT ?`,
     [limit],
@@ -120,7 +127,9 @@ export async function getRecentMovements(limit = 8): Promise<RecentMovement[]> {
     movementType: row.movement_type,
     quantity: row.quantity,
     requestedByName: row.requested_by_name,
+    sectorName: row.sector_name,
     glpiTicketNumber: row.glpi_ticket_number,
+    glpiCommentStatus: row.glpi_comment_status,
     notes: row.notes,
     createdAt: row.created_at,
   }));
@@ -128,4 +137,11 @@ export async function getRecentMovements(limit = 8): Promise<RecentMovement[]> {
 
 export async function getUpdatedItemFromMovement(movement: StockMovement): Promise<Item | null> {
   return getItemById(movement.itemId);
+}
+
+export async function updateMovementGlpiStatus(id: number, status: string) {
+  await query(
+    "UPDATE stock_movements SET glpi_comment_status = ? WHERE id = ?",
+    [status, id],
+  );
 }

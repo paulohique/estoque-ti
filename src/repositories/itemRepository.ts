@@ -1,10 +1,14 @@
 import type { Item } from "../models/Item";
-import { query } from "../lib/mysql";
+import type { ResultSetHeader } from "mysql2";
+
+import { pool, query } from "../lib/mysql";
 
 type ItemRow = {
   id: number;
+  category_id: number | null;
   name: string;
   category: string;
+  category_name: string | null;
   asset_tag: string | null;
   sku: string | null;
   description: string | null;
@@ -18,8 +22,9 @@ type ItemRow = {
 function mapItem(row: ItemRow): Item {
   return {
     id: row.id,
+    categoryId: row.category_id,
     name: row.name,
-    category: row.category,
+    category: row.category_name ?? row.category,
     assetTag: row.asset_tag,
     sku: row.sku,
     description: row.description,
@@ -33,14 +38,24 @@ function mapItem(row: ItemRow): Item {
 
 export async function listItems(): Promise<Item[]> {
   const rows = await query<ItemRow[]>(
-    "SELECT * FROM items ORDER BY id DESC",
+    `SELECT
+      i.*,
+      c.name AS category_name
+    FROM items i
+    LEFT JOIN categories c ON c.id = i.category_id
+    ORDER BY i.id DESC`,
   );
   return rows.map(mapItem);
 }
 
 export async function getItemById(id: number): Promise<Item | null> {
   const rows = await query<ItemRow[]>(
-    "SELECT * FROM items WHERE id = ? LIMIT 1",
+    `SELECT
+      i.*,
+      c.name AS category_name
+    FROM items i
+    LEFT JOIN categories c ON c.id = i.category_id
+    WHERE i.id = ? LIMIT 1`,
     [id],
   );
   if (!rows.length) {
@@ -51,9 +66,10 @@ export async function getItemById(id: number): Promise<Item | null> {
 
 export async function createItem(item: Item): Promise<Item> {
   const result = await query<{ insertId: number }>(
-    "INSERT INTO items (name, category, asset_tag, sku, description, image_path, qty_total, qty_min) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO items (name, category_id, category, asset_tag, sku, description, image_path, qty_total, qty_min) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       item.name,
+      item.categoryId ?? null,
       item.category,
       item.assetTag ?? null,
       item.sku ?? null,
@@ -75,9 +91,10 @@ export async function updateItem(item: Item): Promise<Item> {
     throw new Error("Item id required");
   }
   await query(
-    "UPDATE items SET name = ?, category = ?, asset_tag = ?, sku = ?, description = ?, image_path = ?, qty_total = ?, qty_min = ? WHERE id = ?",
+    "UPDATE items SET name = ?, category_id = ?, category = ?, asset_tag = ?, sku = ?, description = ?, image_path = ?, qty_total = ?, qty_min = ? WHERE id = ?",
     [
       item.name,
+      item.categoryId ?? null,
       item.category,
       item.assetTag ?? null,
       item.sku ?? null,
@@ -107,4 +124,75 @@ export async function updateItemQuantity(id: number, quantity: number): Promise<
   }
 
   return updated;
+}
+
+export async function countItemsByCategoryId(categoryId: number) {
+  const rows = await query<Array<{ count: number }>>(
+    "SELECT COUNT(*) AS count FROM items WHERE category_id = ?",
+    [categoryId],
+  );
+
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function deleteItemById(id: number) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [itemRows] = await connection.query<ItemRow[]>(
+      "SELECT * FROM items WHERE id = ? LIMIT 1 FOR UPDATE",
+      [id],
+    );
+
+    const itemRow = itemRows[0];
+    if (!itemRow) {
+      throw new Error("Item not found");
+    }
+
+    const [movementRows] = await connection.query<Array<{ count: number }>>(
+      "SELECT COUNT(*) AS count FROM stock_movements WHERE item_id = ?",
+      [id],
+    );
+
+    const [imageRows] = await connection.query<Array<{ count: number }>>(
+      "SELECT COUNT(*) AS count FROM item_images WHERE item_id = ?",
+      [id],
+    );
+
+    await connection.query(
+      "DELETE FROM item_images WHERE item_id = ?",
+      [id],
+    );
+
+    await connection.query(
+      "DELETE FROM stock_movements WHERE item_id = ?",
+      [id],
+    );
+
+    const [result] = await connection.query<ResultSetHeader>(
+      "DELETE FROM items WHERE id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Failed to delete item");
+    }
+
+    await connection.commit();
+
+    return {
+      item: mapItem(itemRow),
+      relations: {
+        movementCount: Number(movementRows[0]?.count ?? 0),
+        imageCount: Number(imageRows[0]?.count ?? 0),
+      },
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

@@ -16,3 +16,17 @@ export async function saveUpload(file: File) {
     publicPath: `/uploads/${fileName}`,
   };
 }
+
+export async function removeUpload(publicPath?: string | null) {
+  if (!publicPath || !publicPath.startsWith("/uploads/")) {
+    return;
+  }
+
+  const filePath = path.join(process.cwd(), "public", publicPath.replace("/uploads/", "uploads/"));
+
+  try {
+    await fs.unlink(filePath);
+  } catch {
+    // Ignore missing files or cleanup failures.
+  }
+}
