@@ -1,0 +1,646 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#F8F9FC;--surface:#fff;--surface2:#F1F3F8;
+    --border:#E2E6EE;--border2:#C8CFE0;
+    --text:#1A1D2E;--muted:#6B7280;--hint:#9CA3AF;
+    --blue:#2563EB;--blue-l:#EFF4FF;--blue-m:#BFCFFE;
+    --green:#16A34A;--green-l:#F0FDF4;--green-m:#BBF7D0;
+    --amber:#D97706;--amber-l:#FFFBEB;--amber-m:#FDE68A;
+    --red:#DC2626;--red-l:#FEF2F2;--red-m:#FECACA;
+    --purple:#7C3AED;--purple-l:#F5F3FF;--purple-m:#DDD6FE;
+    --radius:8px;--radius-lg:12px;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:600px}
+  .app{display:flex;height:100%;min-height:600px}
+
+  /* Sidebar */
+  .sidebar{width:220px;background:var(--text);flex-shrink:0;display:flex;flex-direction:column;padding:0}
+  .brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+  .brand-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.2px}
+  .brand-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+  .nav{padding:12px 0;flex:1}
+  .nav-section{padding:8px 18px 4px;font-size:10px;font-weight:500;color:rgba(255,255,255,0.3);letter-spacing:.8px;text-transform:uppercase}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:13px;font-weight:400;transition:all .15s;border-left:2px solid transparent}
+  .nav-item:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.05)}
+  .nav-item.active{color:#fff;background:rgba(255,255,255,0.08);border-left-color:var(--blue)}
+  .nav-icon{width:16px;height:16px;opacity:.7;flex-shrink:0}
+  .nav-item.active .nav-icon{opacity:1}
+  .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:500;padding:1px 6px;border-radius:10px}
+  .sidebar-footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08)}
+  .user-row{display:flex;align-items:center;gap:10px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+  .user-name{font-size:12px;color:rgba(255,255,255,0.7);font-weight:500}
+  .user-role{font-size:10px;color:rgba(255,255,255,0.35)}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+  .page-title{font-size:15px;font-weight:600;color:var(--text)}
+  .page-sub{font-size:12px;color:var(--muted);margin-left:8px}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s}
+  .btn:hover{background:var(--surface2)}
+  .btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn-primary:hover{background:#1d4ed8}
+  .content{flex:1;overflow-y:auto;padding:20px 24px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);padding:4px;border-radius:var(--radius-lg);width:fit-content}
+  .tab{padding:6px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
+  .tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+  /* Metric cards */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
+  .metric-label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .metric-value{font-size:26px;font-weight:600;color:var(--text);line-height:1;margin-bottom:6px;font-family:'IBM Plex Mono',monospace}
+  .metric-delta{font-size:12px;display:flex;align-items:center;gap:4px}
+  .delta-up{color:var(--green)}
+  .delta-down{color:var(--red)}
+  .metric-icon{float:right;width:36px;height:36px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:18px;margin-top:-44px}
+  .icon-blue{background:var(--blue-l);color:var(--blue)}
+  .icon-green{background:var(--green-l);color:var(--green)}
+  .icon-amber{background:var(--amber-l);color:var(--amber)}
+  .icon-red{background:var(--red-l);color:var(--red)}
+
+  /* Grid layout */
+  .grid-2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:16px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .card-title{font-size:13px;font-weight:600;color:var(--text)}
+  .card-action{font-size:12px;color:var(--blue);cursor:pointer;font-weight:500}
+
+  /* Chart bars */
+  .chart-bars{display:flex;align-items:flex-end;gap:8px;height:120px}
+  .bar-group{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+  .bar{border-radius:4px 4px 0 0;width:100%;transition:all .3s}
+  .bar-blue{background:var(--blue)}
+  .bar-blue-l{background:var(--blue-m)}
+  .bar-label{font-size:10px;color:var(--muted);margin-top:4px}
+  .bar-val{font-size:10px;font-weight:500;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+  /* Table */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;font-weight:500;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px}
+  td{font-size:13px;padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--surface2)}
+  .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+  .tag-green{background:var(--green-l);color:var(--green)}
+  .tag-amber{background:var(--amber-l);color:var(--amber)}
+  .tag-red{background:var(--red-l);color:var(--red)}
+  .tag-blue{background:var(--blue-l);color:var(--blue)}
+  .tag-gray{background:var(--surface2);color:var(--muted)}
+
+  /* Donut */
+  .donut-row{display:flex;align-items:center;gap:16px}
+  .donut-wrap{position:relative;width:100px;height:100px;flex-shrink:0}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut-num{font-size:18px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+  .donut-sub{font-size:10px;color:var(--muted)}
+  .legend{display:flex;flex-direction:column;gap:8px;flex:1}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12px}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .legend-label{color:var(--muted);flex:1}
+  .legend-val{font-weight:500;font-family:'IBM Plex Mono',monospace}
+
+  /* Alert list */
+  .alert-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .alert-item:last-child{border-bottom:none}
+  .alert-icon{width:32px;height:32px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .alert-info{flex:1}
+  .alert-name{font-size:13px;font-weight:500;color:var(--text)}
+  .alert-detail{font-size:11px;color:var(--muted);margin-top:1px}
+  .alert-qty{text-align:right}
+  .qty-num{font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+  .qty-min{font-size:11px;color:var(--muted)}
+
+  /* Products page */
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .prod-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:all .15s}
+  .prod-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .prod-img{height:100px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:36px;border-bottom:1px solid var(--border)}
+  .prod-body{padding:12px}
+  .prod-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
+  .prod-cat{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .prod-footer{display:flex;align-items:center;justify-content:space-between}
+  .prod-qty{font-size:15px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+
+  /* Permissions page */
+  .perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .perm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+  .perm-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .perm-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+  .perm-name{font-size:13px;font-weight:500}
+  .perm-email{font-size:11px;color:var(--muted)}
+  .perm-perms{display:flex;flex-direction:column;gap:8px}
+  .perm-row{display:flex;align-items:center;justify-content:space-between}
+  .perm-label{font-size:12px;color:var(--muted)}
+  .toggle{width:36px;height:20px;border-radius:10px;background:var(--border2);position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+  .toggle.on{background:var(--blue)}
+  .toggle::after{content:'';width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .toggle.on::after{left:19px}
+
+  /* Audit page */
+  .audit-list{display:flex;flex-direction:column;gap:0}
+  .audit-item{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .audit-item:last-child{border-bottom:none}
+  .audit-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+  .audit-line{display:flex;flex-direction:column;gap:1px;flex:1}
+  .audit-action{font-size:13px;color:var(--text)}
+  .audit-meta{font-size:11px;color:var(--muted)}
+  .audit-time{font-size:11px;color:var(--hint);white-space:nowrap;font-family:'IBM Plex Mono',monospace}
+
+  /* section hidden */
+  .view{display:none}
+  .view.active{display:block}
+
+  /* Search */
+  .search-bar{position:relative}
+  .search-bar input{padding:7px 12px 7px 34px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text);background:var(--surface2);width:200px;outline:none;font-family:inherit}
+  .search-bar input:focus{border-color:var(--blue);background:var(--surface)}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+</style>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="brand-name">TI Inventario</div>
+      <div class="brand-sub">v2.4.1 · ADMIN</div>
+    </div>
+    <div class="nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showView('dashboard',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showView('produtos',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 3V2M11 3V2M2 7h12"/></svg>
+        Produtos
+      </div>
+      <div class="nav-item" onclick="showView('estoque',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1z"/><path d="M8 8L14 4.5M8 8V15M8 8L2 4.5"/></svg>
+        Estoque
+        <span class="nav-badge">7</span>
+      </div>
+      <div class="nav-section">Operacoes</div>
+      <div class="nav-item" onclick="showView('movimentacao',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        Movimentacao
+      </div>
+      <div class="nav-item" onclick="showView('auditoria',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 6.5A5.5 5.5 0 1 1 2 6.5a5.5 5.5 0 0 1 11 0zM14 14l-3-3"/></svg>
+        Auditoria
+      </div>
+      <div class="nav-section">Acesso</div>
+      <div class="nav-item" onclick="showView('permissoes',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Permissoes
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar">AC</div>
+        <div>
+          <div class="user-name">Admin Central</div>
+          <div class="user-role">Administrador</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="page-title">Dashboard</span>
+      <span class="page-sub" id="page-sub">Visao geral do inventario</span>
+      <div class="topbar-right">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input placeholder="Buscar equipamento...">
+        </div>
+        <button class="btn btn-primary" onclick="sendPrompt('Quero cadastrar um novo produto no sistema')">+ Novo Produto</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="tabs">
+          <div class="tab active">Geral</div>
+          <div class="tab">Este mes</div>
+          <div class="tab">Comparativo</div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Total de itens</div>
+            <div class="metric-icon icon-blue">📦</div>
+            <div class="metric-value">1.847</div>
+            <div class="metric-delta delta-up">▲ 43 este mes</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Produtos distintos</div>
+            <div class="metric-icon icon-purple" style="background:var(--purple-l);color:var(--purple)">🗂️</div>
+            <div class="metric-value">124</div>
+            <div class="metric-delta delta-up">▲ 6 novos</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Saidas no mes</div>
+            <div class="metric-icon icon-amber">📤</div>
+            <div class="metric-value">318</div>
+            <div class="metric-delta delta-down">▼ 12 vs anterior</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Em falta / Critico</div>
+            <div class="metric-icon icon-red">⚠️</div>
+            <div class="metric-value">7</div>
+            <div class="metric-delta delta-down">▲ 2 novos alertas</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Saidas de material — ultimos 6 meses</span>
+              <span class="card-action">Exportar</span>
+            </div>
+            <div class="chart-bars">
+              <div class="bar-group">
+                <div class="bar-val">241</div>
+                <div class="bar bar-blue-l" style="height:72px"></div>
+                <div class="bar-label">Dez</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar-val">187</div>
+                <div class="bar bar-blue-l" style="height:56px"></div>
+                <div class="bar-label">Jan</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar-val">305</div>
+                <div class="bar bar-blue" style="height:92px"></div>
+                <div class="bar-label">Fev</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar-val">276</div>
+                <div class="bar bar-blue" style="height:82px"></div>
+                <div class="bar-label">Mar</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar-val">330</div>
+                <div class="bar bar-blue" style="height:100px"></div>
+                <div class="bar-label">Abr</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar-val">318</div>
+                <div class="bar bar-blue" style="height:95px"></div>
+                <div class="bar-label">Mai</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Distribuicao por categoria</span>
+            </div>
+            <div class="donut-row">
+              <div class="donut-wrap">
+                <svg viewBox="0 0 100 100" width="100" height="100">
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#E2E6EE" stroke-width="14"/>
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#2563EB" stroke-width="14" stroke-dasharray="72 167" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#16A34A" stroke-width="14" stroke-dasharray="40 199" stroke-dashoffset="-72" transform="rotate(-90 50 50)"/>
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#D97706" stroke-width="14" stroke-dasharray="30 209" stroke-dashoffset="-112" transform="rotate(-90 50 50)"/>
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#7C3AED" stroke-width="14" stroke-dasharray="25 214" stroke-dashoffset="-142" transform="rotate(-90 50 50)"/>
+                </svg>
+                <div class="donut-center">
+                  <div class="donut-num">124</div>
+                  <div class="donut-sub">produtos</div>
+                </div>
+              </div>
+              <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#2563EB"></div><div class="legend-label">Computadores</div><div class="legend-val">46</div></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#16A34A"></div><div class="legend-label">Perifericos</div><div class="legend-val">31</div></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#D97706"></div><div class="legend-label">Rede</div><div class="legend-val">24</div></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#7C3AED"></div><div class="legend-label">Outros</div><div class="legend-val">23</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card" style="grid-column:span 2">
+            <div class="card-header">
+              <span class="card-title">Ultimos cadastros</span>
+              <span class="card-action" onclick="showView('produtos', document.querySelector('[onclick*=produtos]'))">Ver todos →</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Produto</th><th>Categoria</th><th>Qtd</th><th>Status</th><th>Cadastrado em</th></tr></thead>
+                <tbody>
+                  <tr><td><b>Monitor Dell 24"</b></td><td><span class="tag tag-gray">Periferico</span></td><td>12</td><td><span class="tag tag-green">Normal</span></td><td style="color:var(--muted)">02/05/2026</td></tr>
+                  <tr><td><b>Notebook Lenovo i7</b></td><td><span class="tag tag-gray">Computador</span></td><td>5</td><td><span class="tag tag-amber">Baixo</span></td><td style="color:var(--muted)">29/04/2026</td></tr>
+                  <tr><td><b>Switch 24p TP-Link</b></td><td><span class="tag tag-gray">Rede</span></td><td>3</td><td><span class="tag tag-green">Normal</span></td><td style="color:var(--muted)">27/04/2026</td></tr>
+                  <tr><td><b>Mouse sem fio Logitech</b></td><td><span class="tag tag-gray">Periferico</span></td><td>0</td><td><span class="tag tag-red">Em falta</span></td><td style="color:var(--muted)">25/04/2026</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Alertas criticos</span>
+              <span class="tag tag-red">7 itens</span>
+            </div>
+            <div class="alert-item">
+              <div class="alert-icon icon-red">🔴</div>
+              <div class="alert-info"><div class="alert-name">Mouse Logitech M185</div><div class="alert-detail">Em falta</div></div>
+              <div class="alert-qty"><div class="qty-num" style="color:var(--red)">0</div><div class="qty-min">min: 5</div></div>
+            </div>
+            <div class="alert-item">
+              <div class="alert-icon icon-amber">🟡</div>
+              <div class="alert-info"><div class="alert-name">Cabo HDMI 2m</div><div class="alert-detail">Abaixo do minimo</div></div>
+              <div class="alert-qty"><div class="qty-num" style="color:var(--amber)">2</div><div class="qty-min">min: 10</div></div>
+            </div>
+            <div class="alert-item">
+              <div class="alert-icon icon-amber">🟡</div>
+              <div class="alert-info"><div class="alert-name">Teclado USB Multilaser</div><div class="alert-detail">Abaixo do minimo</div></div>
+              <div class="alert-qty"><div class="qty-num" style="color:var(--amber)">3</div><div class="qty-min">min: 8</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUTOS -->
+      <div class="view" id="view-produtos">
+        <div class="tabs">
+          <div class="tab active">Todos</div>
+          <div class="tab">Computadores</div>
+          <div class="tab">Perifericos</div>
+          <div class="tab">Rede</div>
+        </div>
+        <div class="prod-grid">
+          <div class="prod-card">
+            <div class="prod-img">🖥️</div>
+            <div class="prod-body">
+              <div class="prod-name">Monitor Dell 24" P2422H</div>
+              <div class="prod-cat">Periferico · Full HD</div>
+              <div class="prod-footer">
+                <div class="prod-qty">12 <span style="font-size:11px;color:var(--muted);font-family:sans-serif">un.</span></div>
+                <span class="tag tag-green">Normal</span>
+              </div>
+            </div>
+          </div>
+          <div class="prod-card">
+            <div class="prod-img">💻</div>
+            <div class="prod-body">
+              <div class="prod-name">Notebook Lenovo IdeaPad i7</div>
+              <div class="prod-cat">Computador · 16GB RAM</div>
+              <div class="prod-footer">
+                <div class="prod-qty">5 <span style="font-size:11px;color:var(--muted);font-family:sans-serif">un.</span></div>
+                <span class="tag tag-amber">Baixo</span>
+              </div>
+            </div>
+          </div>
+          <div class="prod-card">
+            <div class="prod-img">🖱️</div>
+            <div class="prod-body">
+              <div class="prod-name">Mouse Logitech M185</div>
+              <div class="prod-cat">Periferico · Sem fio</div>
+              <div class="prod-footer">
+                <div class="prod-qty">0 <span style="font-size:11px;color:var(--muted);font-family:sans-serif">un.</span></div>
+                <span class="tag tag-red">Em falta</span>
+              </div>
+            </div>
+          </div>
+          <div class="prod-card">
+            <div class="prod-img">⌨️</div>
+            <div class="prod-body">
+              <div class="prod-name">Teclado USB Multilaser</div>
+              <div class="prod-cat">Periferico · ABNT2</div>
+              <div class="prod-footer">
+                <div class="prod-qty">3 <span style="font-size:11px;color:var(--muted);font-family:sans-serif">un.</span></div>
+                <span class="tag tag-amber">Baixo</span>
+              </div>
+            </div>
+          </div>
+          <div class="prod-card">
+            <div class="prod-img">🔌</div>
+            <div class="prod-body">
+              <div class="prod-name">Switch 24p TP-Link</div>
+              <div class="prod-cat">Rede · Gigabit</div>
+              <div class="prod-footer">
+                <div class="prod-qty">3 <span style="font-size:11px;color:var(--muted);font-family:sans-serif">un.</span></div>
+                <span class="tag tag-green">Normal</span>
+              </div>
+            </div>
+          </div>
+          <div class="prod-card" style="border:1.5px dashed var(--border2);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;cursor:pointer" onclick="sendPrompt('Quero cadastrar um novo produto no inventario')">
+            <div style="font-size:28px;color:var(--muted);margin-bottom:8px">+</div>
+            <div style="font-size:13px;font-weight:500;color:var(--muted)">Adicionar produto</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTOQUE -->
+      <div class="view" id="view-estoque">
+        <div style="background:var(--red-l);border:1px solid var(--red-m);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">⚠️</span>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--red)">7 itens com estoque critico</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:1px">Verifique os itens abaixo e faca a reposicao</div>
+          </div>
+          <button class="btn" style="margin-left:auto;border-color:var(--red);color:var(--red)" onclick="sendPrompt('Gerar relatorio de reposicao de estoque')">Gerar relatorio ↗</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Produtos em falta ou criticos</span></div>
+          <table>
+            <thead><tr><th>Produto</th><th>Categoria</th><th>Qtd atual</th><th>Qtd minima</th><th>Status</th><th>Acao</th></tr></thead>
+            <tbody>
+              <tr><td><b>Mouse Logitech M185</b></td><td>Periferico</td><td style="color:var(--red);font-weight:600;font-family:'IBM Plex Mono',monospace">0</td><td style="font-family:'IBM Plex Mono',monospace">5</td><td><span class="tag tag-red">Em falta</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>Cabo HDMI 2m</b></td><td>Acessorio</td><td style="color:var(--amber);font-weight:600;font-family:'IBM Plex Mono',monospace">2</td><td style="font-family:'IBM Plex Mono',monospace">10</td><td><span class="tag tag-amber">Critico</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>Teclado USB Multilaser</b></td><td>Periferico</td><td style="color:var(--amber);font-weight:600;font-family:'IBM Plex Mono',monospace">3</td><td style="font-family:'IBM Plex Mono',monospace">8</td><td><span class="tag tag-amber">Critico</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>Patch cord Cat6 1m</b></td><td>Rede</td><td style="color:var(--amber);font-weight:600;font-family:'IBM Plex Mono',monospace">4</td><td style="font-family:'IBM Plex Mono',monospace">15</td><td><span class="tag tag-amber">Critico</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>Headset USB Logitech</b></td><td>Periferico</td><td style="color:var(--red);font-weight:600;font-family:'IBM Plex Mono',monospace">0</td><td style="font-family:'IBM Plex Mono',monospace">4</td><td><span class="tag tag-red">Em falta</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>Fonte ATX 500W</b></td><td>Componente</td><td style="color:var(--amber);font-weight:600;font-family:'IBM Plex Mono',monospace">1</td><td style="font-family:'IBM Plex Mono',monospace">5</td><td><span class="tag tag-amber">Critico</span></td><td><span class="card-action">Solicitar</span></td></tr>
+              <tr><td><b>SSD 240GB Kingston</b></td><td>Componente</td><td style="color:var(--amber);font-weight:600;font-family:'IBM Plex Mono',monospace">2</td><td style="font-family:'IBM Plex Mono',monospace">6</td><td><span class="tag tag-amber">Critico</span></td><td><span class="card-action">Solicitar</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MOVIMENTACAO -->
+      <div class="view" id="view-movimentacao">
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Registrar movimentacao</span></div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Tipo</label>
+                <select id="movement-type" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text);background:var(--surface);font-family:inherit">
+                  <option>Saida</option><option>Entrada</option><option>Transferencia</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Produto</label>
+                <input id="movement-item" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text);font-family:inherit" placeholder="Buscar produto...">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Quantidade</label>
+                  <input id="movement-qty" type="number" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit" placeholder="0">
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Responsavel</label>
+                  <input id="movement-owner" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit" placeholder="Nome">
+                </div>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Chamado GLPI (obrigatorio para saida)</label>
+                <input id="movement-ticket" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit" placeholder="#12345">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Observacao</label>
+                <textarea id="movement-notes" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;resize:vertical" rows="2" placeholder="Opcional..."></textarea>
+              </div>
+              <button class="btn btn-primary" onclick="handleMovementSubmit()">Registrar movimentacao ↗</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Movimentacoes recentes</span></div>
+            <div class="audit-list">
+              <div class="audit-item"><div class="audit-dot" style="background:var(--red)"></div><div class="audit-line"><div class="audit-action">Saida — Monitor Dell 24" × 2</div><div class="audit-meta">por Marcos Oliveira · Setor: Financeiro</div></div><div class="audit-time">hoje 09:14</div></div>
+              <div class="audit-item"><div class="audit-dot" style="background:var(--green)"></div><div class="audit-line"><div class="audit-action">Entrada — Notebook Lenovo × 3</div><div class="audit-meta">por Admin Central · Compra 2847</div></div><div class="audit-time">ontem 16:30</div></div>
+              <div class="audit-item"><div class="audit-dot" style="background:var(--blue)"></div><div class="audit-line"><div class="audit-action">Transferencia — Teclado USB × 5</div><div class="audit-meta">por Ana Paula · TI → RH</div></div><div class="audit-time">29/04 11:00</div></div>
+              <div class="audit-item"><div class="audit-dot" style="background:var(--red)"></div><div class="audit-line"><div class="audit-action">Saida — Cabo HDMI 2m × 8</div><div class="audit-meta">por Carlos Menezes · Sala de reuniao</div></div><div class="audit-time">28/04 08:45</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDITORIA -->
+      <div class="view" id="view-auditoria">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Log de auditoria completo</span>
+            <span class="card-action">Exportar CSV</span>
+          </div>
+          <div class="audit-list">
+            <div class="audit-item"><div class="audit-dot" style="background:var(--red)"></div><div class="audit-line"><div class="audit-action">Saida registrada — Monitor Dell 24" × 2 (Setor Financeiro)</div><div class="audit-meta">Usuario: marcos.oliveira · IP: 192.168.1.42</div></div><div class="audit-time">02/05 09:14</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--amber)"></div><div class="audit-line"><div class="audit-action">Produto editado — Notebook Lenovo IdeaPad (qtd. min. alterada: 3→5)</div><div class="audit-meta">Usuario: admin · IP: 192.168.1.10</div></div><div class="audit-time">01/05 14:22</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--green)"></div><div class="audit-line"><div class="audit-action">Entrada registrada — Notebook Lenovo × 3 (compra #2847)</div><div class="audit-meta">Usuario: admin · IP: 192.168.1.10</div></div><div class="audit-time">01/05 16:30</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--purple)"></div><div class="audit-line"><div class="audit-action">Permissao concedida — ana.paula recebeu acesso de Movimentacao</div><div class="audit-meta">Usuario: admin · IP: 192.168.1.10</div></div><div class="audit-time">30/04 10:05</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--blue)"></div><div class="audit-line"><div class="audit-action">Produto cadastrado — Switch 24p TP-Link</div><div class="audit-meta">Usuario: ana.paula · IP: 192.168.1.55</div></div><div class="audit-time">27/04 11:18</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--red)"></div><div class="audit-line"><div class="audit-action">Saida registrada — Cabo HDMI 2m × 8 (Sala de reuniao)</div><div class="audit-meta">Usuario: carlos.menezes · IP: 192.168.1.73</div></div><div class="audit-time">28/04 08:45</div></div>
+            <div class="audit-item"><div class="audit-dot" style="background:var(--amber)"></div><div class="audit-line"><div class="audit-action">Alerta gerado — Mouse Logitech M185 abaixo do estoque minimo</div><div class="audit-meta">Sistema automatico</div></div><div class="audit-time">25/04 07:00</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERMISSOES -->
+      <div class="view" id="view-permissoes">
+        <div class="perm-grid">
+          <div class="perm-card">
+            <div class="perm-header">
+              <div class="perm-avatar" style="background:#2563EB">AC</div>
+              <div><div class="perm-name">Admin Central</div><div class="perm-email">admin@empresa.com.br</div></div>
+              <span class="tag tag-blue" style="margin-left:auto">Admin Total</span>
+            </div>
+            <div class="perm-perms">
+              <div class="perm-row"><span class="perm-label">Cadastrar produtos</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Movimentar estoque</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Fazer auditoria</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Administrador total</span><div class="toggle on"></div></div>
+            </div>
+          </div>
+          <div class="perm-card">
+            <div class="perm-header">
+              <div class="perm-avatar" style="background:#16A34A">AP</div>
+              <div><div class="perm-name">Ana Paula</div><div class="perm-email">ana.paula@empresa.com.br</div></div>
+              <span class="tag tag-green" style="margin-left:auto">Operador</span>
+            </div>
+            <div class="perm-perms">
+              <div class="perm-row"><span class="perm-label">Cadastrar produtos</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Movimentar estoque</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Fazer auditoria</span><div class="toggle"></div></div>
+              <div class="perm-row"><span class="perm-label">Administrador total</span><div class="toggle"></div></div>
+            </div>
+          </div>
+          <div class="perm-card">
+            <div class="perm-header">
+              <div class="perm-avatar" style="background:#D97706">CM</div>
+              <div><div class="perm-name">Carlos Menezes</div><div class="perm-email">carlos@empresa.com.br</div></div>
+              <span class="tag tag-amber" style="margin-left:auto">Limitado</span>
+            </div>
+            <div class="perm-perms">
+              <div class="perm-row"><span class="perm-label">Cadastrar produtos</span><div class="toggle"></div></div>
+              <div class="perm-row"><span class="perm-label">Movimentar estoque</span><div class="toggle on"></div></div>
+              <div class="perm-row"><span class="perm-label">Fazer auditoria</span><div class="toggle"></div></div>
+              <div class="perm-row"><span class="perm-label">Administrador total</span><div class="toggle"></div></div>
+            </div>
+          </div>
+          <div class="perm-card" style="border:1.5px dashed var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:160px" onclick="sendPrompt('Quero adicionar um novo usuario ao sistema')">
+            <div style="text-align:center">
+              <div style="font-size:28px;color:var(--muted)">+</div>
+              <div style="font-size:13px;font-weight:500;color:var(--muted);margin-top:6px">Adicionar usuario</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const titles = {
+  dashboard:['Dashboard','Visao geral do inventario'],
+  produtos:['Produtos','Gerenciar equipamentos cadastrados'],
+  estoque:['Estoque Critico','Itens em falta ou abaixo do minimo'],
+  movimentacao:['Movimentacao','Registrar saidas, entradas e transferencias'],
+  auditoria:['Auditoria','Log completo de acoes no sistema'],
+  permissoes:['Permissoes de Acesso','Gerenciar usuarios e seus acessos']
+};
+function showView(id, el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('page-title').textContent = titles[id][0];
+  document.getElementById('page-sub').textContent = titles[id][1];
+}
+function sendPrompt(message){
+  console.log(message);
+}
+function handleMovementSubmit(){
+  const type = document.getElementById('movement-type').value;
+  const item = document.getElementById('movement-item').value;
+  const qty = document.getElementById('movement-qty').value;
+  const ticket = document.getElementById('movement-ticket').value;
+  const owner = document.getElementById('movement-owner').value;
+
+  if (type === 'Saida' && !ticket) {
+    alert('Chamado GLPI obrigatorio para saida.');
+    return;
+  }
+
+  const confirmText = `Confirmar ${type.toLowerCase()} do item "${item}" (Qtd: ${qty}) para o chamado ${ticket}?`;
+  if (!confirm(confirmText)) {
+    return;
+  }
+
+  sendPrompt(`Movimentacao confirmada: ${type} - ${item} - ${qty} - ${ticket} - ${owner}`);
+}
+
+document.querySelectorAll('.toggle').forEach(t=>{
+  t.addEventListener('click',()=>t.classList.toggle('on'));
+});
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',function(){
+    this.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
