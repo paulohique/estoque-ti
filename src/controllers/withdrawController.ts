@@ -4,11 +4,12 @@ export async function withdrawController(input: {
   itemId: number;
   quantity: number;
   requestedBy: number;
+  movementType: "in" | "out" | "transfer";
   sectorId?: number | null;
-  glpiTicketNumber: string;
+  glpiTicketNumber?: string | null;
   notes?: string | null;
   confirmed: boolean;
 }) {
-  const movement = await withdrawItem(input);
-  return { ok: true, movement };
+  const result = await withdrawItem(input);
+  return { ok: true, ...result };
 }

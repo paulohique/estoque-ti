@@ -1,5 +1,5 @@
 import type { User } from "../models/User";
-import { getUserByUsername } from "../repositories/userRepository";
+import { getUserById, getUserByUsername } from "../repositories/userRepository";
 import { getEffectivePermissions } from "./permissionService";
 
 async function adAuthenticate(_username: string, _password: string) {
@@ -12,15 +12,17 @@ function shouldUseAd() {
 }
 
 export async function login(username: string, password: string) {
-  const useAd = shouldUseAd();
+  const forceLocal = username.startsWith(".\\");
+  const normalizedUsername = forceLocal ? username.slice(2) : username;
+  const useAd = shouldUseAd() && !forceLocal;
   if (useAd) {
-    const ok = await adAuthenticate(username, password);
+    const ok = await adAuthenticate(normalizedUsername, password);
     if (!ok) {
       return null;
     }
   }
 
-  const user = await getUserByUsername(username);
+  const user = await getUserByUsername(normalizedUsername);
   if (!user) {
     return null;
   }
@@ -32,6 +34,15 @@ export async function login(username: string, password: string) {
   }
 
   const permissions = await getEffectivePermissions(user.id, user.roleId);
+  return { user, permissions };
+}
+
+export async function getUserSession(userId: number, roleId: number) {
+  const user = await getUserById(userId);
+  if (!user) {
+    return null;
+  }
+  const permissions = await getEffectivePermissions(userId, roleId ?? user.roleId);
   return { user, permissions };
 }
 

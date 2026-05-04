@@ -1,13 +1,14 @@
 import type { StockMovement } from "../models/StockMovement";
-import { createMovement } from "../repositories/stockMovementRepository";
+import { createMovement, getUpdatedItemFromMovement } from "../repositories/stockMovementRepository";
 import { postWithdrawalComment, verifyTicket } from "./glpiService";
 
 export async function withdrawItem(input: {
   itemId: number;
   quantity: number;
   requestedBy: number;
+  movementType: "in" | "out" | "transfer";
   sectorId?: number | null;
-  glpiTicketNumber: string;
+  glpiTicketNumber?: string | null;
   notes?: string | null;
   confirmed: boolean;
 }) {
@@ -15,29 +16,39 @@ export async function withdrawItem(input: {
     throw new Error("Confirmation required");
   }
 
-  if (!input.glpiTicketNumber) {
-    throw new Error("GLPI ticket required");
+  if (input.quantity <= 0) {
+    throw new Error("Quantity must be greater than zero");
   }
 
-  const ticket = await verifyTicket(input.glpiTicketNumber);
-  if (!ticket.ok) {
-    throw new Error("Invalid GLPI ticket");
+  if (input.movementType === "out") {
+    if (!input.glpiTicketNumber) {
+      throw new Error("GLPI ticket required");
+    }
+
+    const ticket = await verifyTicket(input.glpiTicketNumber);
+    if (!ticket.ok) {
+      throw new Error("Invalid GLPI ticket");
+    }
   }
 
   const movement: StockMovement = {
     id: 0,
     itemId: input.itemId,
-    movementType: "out",
+    movementType: input.movementType,
     quantity: input.quantity,
     requestedBy: input.requestedBy,
     sectorId: input.sectorId ?? null,
-    glpiTicketNumber: input.glpiTicketNumber,
-    glpiCommentStatus: "pending",
+    glpiTicketNumber: input.glpiTicketNumber ?? null,
+    glpiCommentStatus: input.movementType === "out" ? "pending" : null,
     notes: input.notes ?? null,
   };
 
   const saved = await createMovement(movement);
-  await postWithdrawalComment(input.glpiTicketNumber, "Equipamento retirado no sistema.");
+  if (input.movementType === "out" && input.glpiTicketNumber) {
+    await postWithdrawalComment(input.glpiTicketNumber, "Equipamento retirado no sistema.");
+  }
 
-  return saved;
+  const item = await getUpdatedItemFromMovement(saved);
+
+  return { movement: saved, item };
 }
