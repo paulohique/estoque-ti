@@ -1,6 +1,8 @@
 import type { User } from "../models/User";
-import { getUserById, getUserByUsername } from "../repositories/userRepository";
+import { createUser, getUserById, getUserByUsername, updateUserLastLogin } from "../repositories/userRepository";
 import { getEffectivePermissions } from "./permissionService";
+import { roles } from "../config/roles";
+import { findRoleByName } from "./userAccessService";
 
 async function adAuthenticate(_username: string, _password: string) {
   // Integracao com AD/LDAP.
@@ -22,7 +24,25 @@ export async function login(username: string, password: string) {
     }
   }
 
-  const user = await getUserByUsername(normalizedUsername);
+  let user = await getUserByUsername(normalizedUsername);
+  if (!user && useAd) {
+    const defaultRole = await findRoleByName(roles.tecnico);
+    if (!defaultRole) {
+      return null;
+    }
+
+    user = await createUser({
+      id: 0,
+      username: normalizedUsername,
+      displayName: normalizedUsername,
+      email: null,
+      passwordHash: null,
+      roleId: defaultRole.id,
+      active: true,
+      firstAccessPending: true,
+    });
+  }
+
   if (!user) {
     return null;
   }
@@ -34,6 +54,7 @@ export async function login(username: string, password: string) {
   }
 
   const permissions = await getEffectivePermissions(user.id, user.roleId);
+  await updateUserLastLogin(user.id);
   return { user, permissions };
 }
 

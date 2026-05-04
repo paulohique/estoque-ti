@@ -21,7 +21,7 @@ export async function updateCategoryController(input: Category) {
   return { ok: true, category };
 }
 
-export async function deleteCategoryController(input: { id: number }) {
-  await removeCategory(input.id);
+export async function deleteCategoryController(input: { id: number; deletedBy?: number }) {
+  await removeCategory(input.id, input.deletedBy);
   return { ok: true };
 }

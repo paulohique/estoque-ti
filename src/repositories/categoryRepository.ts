@@ -5,13 +5,13 @@ import { query } from "../lib/mysql";
 
 export async function listCategories(): Promise<Category[]> {
   return query<Category[]>(
-    "SELECT id, name, description FROM categories ORDER BY name ASC",
+    "SELECT id, name, description FROM categories WHERE deleted_at IS NULL ORDER BY name ASC",
   );
 }
 
 export async function getCategoryById(id: number): Promise<Category | null> {
   const rows = await query<Category[]>(
-    "SELECT id, name, description FROM categories WHERE id = ? LIMIT 1",
+    "SELECT id, name, description FROM categories WHERE id = ? AND deleted_at IS NULL LIMIT 1",
     [id],
   );
 
@@ -46,9 +46,18 @@ export async function updateCategory(input: Category): Promise<Category> {
   return category;
 }
 
-export async function deleteCategory(id: number) {
+export async function deleteCategory(id: number, deletedBy?: number | null) {
   await query(
-    "DELETE FROM categories WHERE id = ?",
-    [id],
+    "UPDATE categories SET deleted_at = CURRENT_TIMESTAMP, deleted_by = ? WHERE id = ? AND deleted_at IS NULL",
+    [deletedBy ?? null, id],
   );
+}
+
+export async function findCategoryByNormalizedName(name: string) {
+  const rows = await query<Category[]>(
+    "SELECT id, name, description FROM categories WHERE deleted_at IS NULL AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1",
+    [name],
+  );
+
+  return rows[0] ?? null;
 }

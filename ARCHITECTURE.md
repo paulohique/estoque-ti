@@ -10,6 +10,7 @@ Esta estrutura organiza o projeto em camadas MVC e separa responsabilidades entr
 - Models: tipos/entidades e contratos de dados.
 - Repositories: acesso ao banco de dados (MySQL).
 - Lib/Config: conexao, helpers e configuracoes.
+- Database: schema base em `database/schema.sql` e evolucao versionada em `database/migrations`.
 
 ## Estrutura de pastas
 
@@ -44,6 +45,7 @@ Request -> API Route (app/api) -> Controller -> Service -> Repository -> MySQL
 
 - Use phpMyAdmin apenas como interface de administracao do MySQL (XAMPP).
 - Variaveis de ambiente ficam em `.env` (exemplo em `.env.example`).
+- Execute `npm run db:migrate` para aplicar as migrations versionadas do MySQL.
 - O App Router do Next.js serve como camada de Views.
 - Autenticacao via AD e permissao efetiva por perfil + overrides individuais.
 - Saidas exigem numero de chamado GLPI e envio de comentario via API.

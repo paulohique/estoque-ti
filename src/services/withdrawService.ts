@@ -26,6 +26,10 @@ export async function withdrawItem(input: {
     throw new Error("Quantity must be greater than zero");
   }
 
+  if (input.movementType === "transfer" && !input.sectorId) {
+    throw new Error("Sector is required for transfers");
+  }
+
   if (input.movementType === "out") {
     if (!input.glpiTicketNumber) {
       throw new Error("GLPI ticket required");

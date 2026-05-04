@@ -16,7 +16,7 @@ export async function updateSectorController(input: Sector) {
   return { ok: true, sector };
 }
 
-export async function deleteSectorController(input: { id: number }) {
-  await removeSector(input.id);
+export async function deleteSectorController(input: { id: number; deletedBy?: number }) {
+  await removeSector(input.id, input.deletedBy);
   return { ok: true };
 }

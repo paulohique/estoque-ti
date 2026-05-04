@@ -37,7 +37,11 @@ function ensureGlpiConfigured() {
     throw new Error("GLPI API is not configured");
   }
 
-  return config;
+  return {
+    ...config,
+    apiUrl: config.apiUrl,
+    userToken: config.userToken,
+  };
 }
 
 function buildHeaders(sessionToken?: string) {
@@ -88,9 +92,17 @@ async function glpiFetch<T>(
   }
 
   if (!response.ok) {
+    const objectPayload =
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : null;
     const message = Array.isArray(payload)
       ? payload.join(" - ")
-      : payload?.message ?? payload?.[1] ?? `GLPI request failed with status ${response.status}`;
+      : typeof objectPayload?.message === "string"
+        ? objectPayload.message
+        : typeof objectPayload?.["1"] === "string"
+          ? objectPayload["1"]
+          : `GLPI request failed with status ${response.status}`;
 
     throw new Error(message);
   }

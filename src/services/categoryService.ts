@@ -2,6 +2,7 @@ import type { Category } from "../models/Category";
 import {
   createCategory,
   deleteCategory,
+  findCategoryByNormalizedName,
   getCategoryById,
   listCategories,
   updateCategory,
@@ -22,6 +23,11 @@ export async function addCategory(input: { name: string; description?: string | 
     throw new Error("Category name is required");
   }
 
+  const existing = await findCategoryByNormalizedName(name);
+  if (existing) {
+    throw new Error("A category with this name already exists");
+  }
+
   return createCategory({
     name,
     description: input.description?.trim() || null,
@@ -37,6 +43,11 @@ export async function editCategory(input: Category) {
     throw new Error("Category name is required");
   }
 
+  const existing = await findCategoryByNormalizedName(name);
+  if (existing && existing.id !== input.id) {
+    throw new Error("A category with this name already exists");
+  }
+
   return updateCategory({
     ...input,
     name,
@@ -44,7 +55,7 @@ export async function editCategory(input: Category) {
   });
 }
 
-export async function removeCategory(id: number) {
+export async function removeCategory(id: number, deletedBy?: number) {
   const category = await getCategoryById(id);
   if (!category) {
     throw new Error("Category not found");
@@ -56,7 +67,7 @@ export async function removeCategory(id: number) {
   }
 
   try {
-    await deleteCategory(id);
+    await deleteCategory(id, deletedBy);
   } catch {
     throw new Error("This category is already linked to products and cannot be deleted");
   }

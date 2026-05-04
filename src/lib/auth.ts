@@ -34,3 +34,14 @@ export async function requirePermission(code: string) {
 
   return session;
 }
+
+export async function requireAnyPermission(codes: string[]) {
+  const session = await requireSession();
+  const permissions = await getEffectivePermissions(session.userId, session.roleId);
+
+  if (!codes.some((code) => permissions.includes(code))) {
+    throw new Error("Forbidden");
+  }
+
+  return session;
+}

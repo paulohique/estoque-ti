@@ -16,7 +16,7 @@ export async function updateItemController(item: Item) {
   return { ok: true, item: updated };
 }
 
-export async function deleteItemController(input: { id: number }) {
-  const deleted = await removeItem(input.id);
+export async function deleteItemController(input: { id: number; deletedBy: number }) {
+  const deleted = await removeItem(input.id, input.deletedBy);
   return { ok: true, ...deleted };
 }

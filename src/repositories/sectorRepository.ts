@@ -4,12 +4,12 @@ import type { ResultSetHeader } from "mysql2";
 import { query } from "../lib/mysql";
 
 export async function listSectors(): Promise<Sector[]> {
-  return query<Sector[]>("SELECT id, name, description FROM sectors ORDER BY name ASC");
+  return query<Sector[]>("SELECT id, name, description FROM sectors WHERE deleted_at IS NULL ORDER BY name ASC");
 }
 
 export async function getSectorById(id: number): Promise<Sector | null> {
   const rows = await query<Sector[]>(
-    "SELECT id, name, description FROM sectors WHERE id = ? LIMIT 1",
+    "SELECT id, name, description FROM sectors WHERE id = ? AND deleted_at IS NULL LIMIT 1",
     [id],
   );
 
@@ -44,9 +44,18 @@ export async function updateSector(input: Sector): Promise<Sector> {
   return sector;
 }
 
-export async function deleteSector(id: number) {
+export async function deleteSector(id: number, deletedBy?: number | null) {
   await query(
-    "DELETE FROM sectors WHERE id = ?",
-    [id],
+    "UPDATE sectors SET deleted_at = CURRENT_TIMESTAMP, deleted_by = ? WHERE id = ? AND deleted_at IS NULL",
+    [deletedBy ?? null, id],
   );
+}
+
+export async function findSectorByNormalizedName(name: string) {
+  const rows = await query<Sector[]>(
+    "SELECT id, name, description FROM sectors WHERE deleted_at IS NULL AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1",
+    [name],
+  );
+
+  return rows[0] ?? null;
 }
