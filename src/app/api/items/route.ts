@@ -14,6 +14,19 @@ import { recordAuditLog } from "../../../services/auditService";
 
 export const runtime = "nodejs";
 
+function normalizeDateInput(value: FormDataEntryValue | string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const rawValue = String(value).trim();
+  if (!rawValue) {
+    return null;
+  }
+
+  return rawValue.length >= 10 ? rawValue.slice(0, 10) : rawValue;
+}
+
 export async function GET() {
   try {
     await requirePermission("view_items");
@@ -54,7 +67,7 @@ export async function POST(request: Request) {
         locationName: form.get("locationName") ? String(form.get("locationName")) : null,
         supplierName: form.get("supplierName") ? String(form.get("supplierName")) : null,
         invoiceNumber: form.get("invoiceNumber") ? String(form.get("invoiceNumber")) : null,
-        purchaseDate: form.get("purchaseDate") ? String(form.get("purchaseDate")) : null,
+        purchaseDate: normalizeDateInput(form.get("purchaseDate")),
         purchaseValue: form.get("purchaseValue") ? Number(form.get("purchaseValue")) : null,
         imagePath,
         qtyTotal: Number(form.get("qtyTotal") ?? 0),
@@ -122,7 +135,7 @@ export async function PUT(request: Request) {
         locationName: form.get("locationName") ? String(form.get("locationName")) : null,
         supplierName: form.get("supplierName") ? String(form.get("supplierName")) : null,
         invoiceNumber: form.get("invoiceNumber") ? String(form.get("invoiceNumber")) : null,
-        purchaseDate: form.get("purchaseDate") ? String(form.get("purchaseDate")) : null,
+        purchaseDate: normalizeDateInput(form.get("purchaseDate")),
         purchaseValue: form.get("purchaseValue") ? Number(form.get("purchaseValue")) : null,
         imagePath,
         qtyTotal: Number(form.get("qtyTotal") ?? 0),

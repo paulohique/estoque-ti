@@ -9,26 +9,26 @@ CREATE TABLE IF NOT EXISTS categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS first_access_pending TINYINT(1) NOT NULL DEFAULT 0 AFTER active,
-  ADD COLUMN IF NOT EXISTS last_login_at DATETIME NULL AFTER first_access_pending,
-  ADD COLUMN IF NOT EXISTS deleted_at DATETIME NULL AFTER last_login_at;
+  ADD COLUMN first_access_pending TINYINT(1) NOT NULL DEFAULT 0 AFTER active,
+  ADD COLUMN last_login_at DATETIME NULL AFTER first_access_pending,
+  ADD COLUMN deleted_at DATETIME NULL AFTER last_login_at;
 
 ALTER TABLE items
-  ADD COLUMN IF NOT EXISTS category_id INT NULL AFTER id,
-  ADD COLUMN IF NOT EXISTS serial_number VARCHAR(120) NULL AFTER sku,
-  ADD COLUMN IF NOT EXISTS responsible_name VARCHAR(160) NULL AFTER description,
-  ADD COLUMN IF NOT EXISTS item_status VARCHAR(32) NOT NULL DEFAULT 'em_estoque' AFTER responsible_name,
-  ADD COLUMN IF NOT EXISTS location_name VARCHAR(160) NULL AFTER item_status,
-  ADD COLUMN IF NOT EXISTS supplier_name VARCHAR(160) NULL AFTER location_name,
-  ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(64) NULL AFTER supplier_name,
-  ADD COLUMN IF NOT EXISTS purchase_date DATE NULL AFTER invoice_number,
-  ADD COLUMN IF NOT EXISTS purchase_value DECIMAL(12,2) NULL AFTER purchase_date,
-  ADD COLUMN IF NOT EXISTS deleted_at DATETIME NULL AFTER updated_at,
-  ADD COLUMN IF NOT EXISTS deleted_by INT NULL AFTER deleted_at;
+  ADD COLUMN category_id INT NULL AFTER id,
+  ADD COLUMN serial_number VARCHAR(120) NULL AFTER sku,
+  ADD COLUMN responsible_name VARCHAR(160) NULL AFTER description,
+  ADD COLUMN item_status VARCHAR(32) NOT NULL DEFAULT 'em_estoque' AFTER responsible_name,
+  ADD COLUMN location_name VARCHAR(160) NULL AFTER item_status,
+  ADD COLUMN supplier_name VARCHAR(160) NULL AFTER location_name,
+  ADD COLUMN invoice_number VARCHAR(64) NULL AFTER supplier_name,
+  ADD COLUMN purchase_date DATE NULL AFTER invoice_number,
+  ADD COLUMN purchase_value DECIMAL(12,2) NULL AFTER purchase_date,
+  ADD COLUMN deleted_at DATETIME NULL AFTER updated_at,
+  ADD COLUMN deleted_by INT NULL AFTER deleted_at;
 
 ALTER TABLE sectors
-  ADD COLUMN IF NOT EXISTS deleted_at DATETIME NULL,
-  ADD COLUMN IF NOT EXISTS deleted_by INT NULL;
+  ADD COLUMN deleted_at DATETIME NULL,
+  ADD COLUMN deleted_by INT NULL;
 
 INSERT IGNORE INTO categories (name)
 SELECT DISTINCT TRIM(category)

@@ -2534,7 +2534,7 @@ export default function Home() {
 
       {editModalOpen && selectedProduct && (
         <div className="modal">
-          <div className="modal-card">
+          <div className="modal-card modal-edit">
             <div className="modal-header">
               <div className="modal-title">Editar item</div>
               <button className="modal-close" onClick={() => setEditModalOpen(false)}>

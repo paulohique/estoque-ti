@@ -1,0 +1,14 @@
+<svg width="640" height="360" viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="360" rx="28" fill="#0F172A"/>
+  <rect x="36" y="36" width="568" height="288" rx="22" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <circle cx="140" cy="120" r="44" fill="#14B8A6" fill-opacity="0.18"/>
+  <circle cx="500" cy="240" r="58" fill="#F59E0B" fill-opacity="0.16"/>
+  <rect x="112" y="92" width="216" height="16" rx="8" fill="#E2E8F0" fill-opacity="0.85"/>
+  <rect x="112" y="126" width="160" height="10" rx="5" fill="#94A3B8"/>
+  <rect x="112" y="154" width="258" height="10" rx="5" fill="#94A3B8"/>
+  <rect x="112" y="182" width="198" height="10" rx="5" fill="#94A3B8"/>
+  <rect x="112" y="228" width="136" height="44" rx="14" fill="#0EA5E9"/>
+  <text x="140" y="257" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">TI</text>
+  <text x="340" y="150" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700">Inventario</text>
+  <text x="340" y="186" fill="#94A3B8" font-family="Arial, Helvetica, sans-serif" font-size="16">Demo visual para itens cadastrados</text>
+</svg>

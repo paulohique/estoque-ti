@@ -1,4 +1,4 @@
-// File: C:\xampp\htdocs\Estoque-TI\src\app\api\sectors\route.ts
+// File: D:\github\estoque-ti\src\app\api\sectors\route.ts
 import * as entry from '../../../../../src/app/api/sectors/route.js'
 import type { NextRequest } from 'next/server.js'
 

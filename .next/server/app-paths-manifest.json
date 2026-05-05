@@ -1,4 +1,12 @@
 {
   "/login/page": "app/login/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/api/withdraw/route": "app/api/withdraw/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/items/route": "app/api/items/route.js",
+  "/api/categories/route": "app/api/categories/route.js",
+  "/api/access/route": "app/api/access/route.js",
+  "/api/sectors/route": "app/api/sectors/route.js",
+  "/api/audit/route": "app/api/audit/route.js"
 }

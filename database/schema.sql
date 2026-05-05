@@ -1,4 +1,4 @@
--- Active: 1777903298479@@127.0.0.1@3306@estoqueti
+-- Active: 1756851289822@@127.0.0.1@3306@estoqueti
 -- Coloque aqui o schema inicial do banco (MySQL)
 
 -- Exemplo de criacao do banco com collation utf8mb4_unicode_ci
@@ -7,7 +7,9 @@
 --   COLLATE utf8mb4_unicode_ci;
 
 -- Tabelas principais
-
+CREATE DATABASE estoqueti
+    DEFAULT CHARACTER SET = 'utf8mb4';
+USE estoqueti;
 CREATE TABLE IF NOT EXISTS roles (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	name VARCHAR(32) NOT NULL UNIQUE,

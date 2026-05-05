@@ -1,6 +1,6 @@
 ALTER TABLE categories
-  ADD COLUMN IF NOT EXISTS deleted_at DATETIME NULL,
-  ADD COLUMN IF NOT EXISTS deleted_by INT NULL AFTER deleted_at;
+  ADD COLUMN deleted_at DATETIME NULL,
+  ADD COLUMN deleted_by INT NULL AFTER deleted_at;
 
 INSERT IGNORE INTO permissions (code, description) VALUES
   ('delete_item', 'Inativar item'),

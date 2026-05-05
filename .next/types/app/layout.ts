@@ -1,4 +1,4 @@
-// File: C:\xampp\htdocs\Estoque-TI\src\app\layout.tsx
+// File: D:\github\estoque-ti\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

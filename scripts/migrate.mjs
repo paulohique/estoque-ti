@@ -55,6 +55,29 @@ async function getExecutedMigrations(connection) {
   return new Set(rows.map((row) => row.file_name));
 }
 
+function splitSqlStatements(sql) {
+  return sql
+    .split(/;\s*(?:\r?\n|$)/)
+    .map((statement) => statement.trim())
+    .filter(Boolean)
+    .filter((statement) => !statement.startsWith("--"));
+}
+
+async function executeMigrationStatements(connection, file, sql) {
+  for (const statement of splitSqlStatements(sql)) {
+    try {
+      await connection.query(statement);
+    } catch (error) {
+      if (error?.code === "ER_DUP_FIELDNAME") {
+        console.log(`skip ${file}: ${error.message}`);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
 async function run() {
   await loadEnvFile();
 
@@ -84,7 +107,7 @@ async function run() {
       const sql = await fs.readFile(path.join(migrationsDir, file), "utf8");
       console.log(`apply ${file}`);
       await connection.beginTransaction();
-      await connection.query(sql);
+      await executeMigrationStatements(connection, file, sql);
       await connection.query(
         "INSERT INTO schema_migrations (file_name) VALUES (?)",
         [file],
